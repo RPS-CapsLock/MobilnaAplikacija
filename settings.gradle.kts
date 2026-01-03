@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ProjektAplikacija"
 include(":app")
+include(":tsp")
