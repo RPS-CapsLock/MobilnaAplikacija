@@ -5,7 +5,7 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import kotlin.math.sqrt
 
-class TSP(path: String, _leaveOutArray: Array<Int>, private val maxEvaluations: Int) {
+class TSP(path: String, _leaveOutArray: Array<Int>, private var maxEvaluations: Int = -1) {
 
     enum class DistanceType { EUCLIDEAN, WEIGHTED }
 
@@ -65,7 +65,7 @@ class TSP(path: String, _leaveOutArray: Array<Int>, private val maxEvaluations: 
     }
 
     fun generateTour(): Tour {
-        val tour = Tour(numberOfCities, 0)
+        val tour = Tour(numberOfCities, start)
 
         val arr = cities.toMutableList()
         for (i in arr.size - 1 downTo 1) {
@@ -160,7 +160,6 @@ class TSP(path: String, _leaveOutArray: Array<Int>, private val maxEvaluations: 
                             y = p[2].toDouble()
                         )
                     )
-                    println(allCities.last())
                 }
             }
 
@@ -191,6 +190,9 @@ class TSP(path: String, _leaveOutArray: Array<Int>, private val maxEvaluations: 
         cities.clear()
         cities.addAll(builtCities.drop(1))
         numberOfCities = cities.size
+
+        if (maxEvaluations == -1)
+            maxEvaluations = 1000 * numberOfCities
 
         if (distanceType == DistanceType.WEIGHTED) {
             require(edgeWeightFormat == "" || edgeWeightFormat == "FULL_MATRIX") {

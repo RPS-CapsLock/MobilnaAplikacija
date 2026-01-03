@@ -7,13 +7,14 @@ class GeneticAlgorithm(
     private val tsp: TSP,
     private val popSize: Int,
     private val cr: Double,
-    private val pm: Double
+    private val pm: Double,
+    private val repeat: Int
 ) {
 
     private val population = ArrayList<Tour>(popSize)
     private val offspring = ArrayList<Tour>(popSize)
 
-    fun run(): Tour {
+    fun run(): Pair<Tour, MutableList<Tour>> {
         population.clear()
         offspring.clear()
 
@@ -23,46 +24,66 @@ class GeneticAlgorithm(
             population.add(t)
         }
 
-        var best = population.minBy { it.distance }.clone()
+        var outerBest = population.minBy { it.distance }.clone()
+        val allBests: MutableList<Tour> = mutableListOf()
 
-        while (tsp.getNumberOfEvaluations() < tsp.getMaxEvaluations()) {
-            offspring.add(best.clone())
-
-            while (offspring.size < popSize) {
-                val parent1 = tournamentSelection()
-                val parent2 = tournamentSelectionDifferentFrom(parent1)
-
-                if (RandomUtils.nextDouble() < cr) {
-                    val (c1, c2) = pmx(parent1, parent2)
-                    offspring.add(c1)
-                    if (offspring.size < popSize) offspring.add(c2)
-                } else {
-                    offspring.add(parent1.clone())
-                    if (offspring.size < popSize) offspring.add(parent2.clone())
-                }
-            }
-
-            for (i in 1 until offspring.size) {
-                if (RandomUtils.nextDouble() < pm) {
-                    swapMutation(offspring[i])
-                }
-            }
-
-            for (t in offspring) {
-                if (t.distance == Double.MAX_VALUE) {
-                    tsp.evaluate(t)
-                }
-                if (t.distance < best.distance) {
-                    best = t.clone()
-                }
-            }
-
+        for (i0 in 0..repeat) {
             population.clear()
-            population.addAll(offspring)
             offspring.clear()
+
+            repeat(popSize) {
+                val t = tsp.generateTour()
+                tsp.evaluate(t)
+                population.add(t)
+            }
+
+            var best = population.minBy { it.distance }.clone()
+
+            while (tsp.getNumberOfEvaluations() < tsp.getMaxEvaluations()) {
+                offspring.add(best.clone())
+
+                while (offspring.size < popSize) {
+                    val parent1 = tournamentSelection()
+                    val parent2 = tournamentSelectionDifferentFrom(parent1)
+
+                    if (RandomUtils.nextDouble() < cr) {
+                        val (c1, c2) = pmx(parent1, parent2)
+                        offspring.add(c1)
+                        if (offspring.size < popSize) offspring.add(c2)
+                    } else {
+                        offspring.add(parent1.clone())
+                        if (offspring.size < popSize) offspring.add(parent2.clone())
+                    }
+                }
+
+                for (i in 1 until offspring.size) {
+                    if (RandomUtils.nextDouble() < pm) {
+                        swapMutation(offspring[i])
+                    }
+                }
+
+                for (t in offspring) {
+                    if (t.distance == Double.MAX_VALUE) {
+                        tsp.evaluate(t)
+                    }
+                    if (t.distance < best.distance) {
+                        best = t.clone()
+                    }
+                }
+
+                population.clear()
+                population.addAll(offspring)
+                offspring.clear()
+            }
+
+            if (best.distance < outerBest.distance) {
+                outerBest = best.clone()
+            }
+
+            allBests.add(best)
         }
 
-        return best
+        return Pair(outerBest, allBests)
     }
 
     private fun tournamentSelection(): Tour {
@@ -111,8 +132,8 @@ class GeneticAlgorithm(
         val c1Idx = pmxOne(p1Idx, p2Idx, from, to)
         val c2Idx = pmxOne(p2Idx, p1Idx, from, to)
 
-        val c1 = Tour(size, 0)
-        val c2 = Tour(size, 0)
+        val c1 = Tour(size, tsp.start)
+        val c2 = Tour(size, tsp.start)
 
         val indexToCity = HashMap<Int, City>(tsp.cities.size + 1)
         indexToCity[tsp.start.index] = tsp.start
