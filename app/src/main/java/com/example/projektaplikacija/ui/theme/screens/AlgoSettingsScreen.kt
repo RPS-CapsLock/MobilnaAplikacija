@@ -15,25 +15,29 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+class AlgoSettingsViewModel : ViewModel() {
+    val np = mutableStateOf("100")
+    val pc = mutableStateOf("0.8")
+    val pm = mutableStateOf("0.1")
+    val maxFes = mutableStateOf("3000")
+    val repeats = mutableStateOf("30")
+    val optimizeChoice = mutableStateOf(0)
+}
 
 @Composable
-fun AlgoSettingsScreen( onBack: () -> Unit, onNext: () -> Unit ) {
-
-    var np by remember { mutableStateOf("100") }
-    var pc by remember { mutableStateOf("0.8") }
-    var pm by remember { mutableStateOf("0.1") }
-    var maxFes by remember { mutableStateOf("3000") }
-    var repeats by remember { mutableStateOf("30") }
-    var optimizeChoice by remember { mutableStateOf(0) }
-
+fun AlgoSettingsScreen(
+    onBack: () -> Unit,
+    onNext: () -> Unit,
+    vm: AlgoSettingsViewModel = viewModel()
+) {
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -47,40 +51,40 @@ fun AlgoSettingsScreen( onBack: () -> Unit, onNext: () -> Unit ) {
         Spacer(modifier = Modifier.height(4.dp))
 
         OutlinedTextField(
-            value = np,
-            onValueChange = { np = it },
+            value = vm.np.value,
+            onValueChange = { vm.np.value = it },
             label = { Text("Velikost populacije") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
-            value = pc,
-            onValueChange = { pc = it },
+            value = vm.pc.value,
+            onValueChange = { vm.pc.value = it },
             label = { Text("Verjetnost križanja") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
-            value = pm,
-            onValueChange = { pm = it },
+            value = vm.pm.value,
+            onValueChange = { vm.pm.value = it },
             label = { Text("Verjetnost mutacije") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
-            value = maxFes,
-            onValueChange = { maxFes = it },
+            value = vm.maxFes.value,
+            onValueChange = { vm.maxFes.value = it },
             label = { Text("Max FES") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
-            value = repeats,
-            onValueChange = { repeats = it },
+            value = vm.repeats.value,
+            onValueChange = { vm.repeats.value = it },
             label = { Text("Število ponovitev") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
@@ -95,8 +99,8 @@ fun AlgoSettingsScreen( onBack: () -> Unit, onNext: () -> Unit ) {
             modifier = Modifier.fillMaxWidth()
         ) {
             RadioButton(
-                selected = optimizeChoice == 0,
-                onClick = { optimizeChoice = 0 }
+                selected = vm.optimizeChoice.value == 0,
+                onClick = { vm.optimizeChoice.value = 0 }
             )
             Text("Čas")
         }
@@ -106,8 +110,8 @@ fun AlgoSettingsScreen( onBack: () -> Unit, onNext: () -> Unit ) {
             modifier = Modifier.fillMaxWidth()
         ) {
             RadioButton(
-                selected = optimizeChoice == 1,
-                onClick = { optimizeChoice = 1 }
+                selected = vm.optimizeChoice.value == 1,
+                onClick = { vm.optimizeChoice.value = 1 }
             )
             Text("Dolžina poti")
         }
