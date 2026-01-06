@@ -1,4 +1,4 @@
-package com.example.projektaplikacija.ui.theme.screens
+package com.example.projektaplikacija.screens
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.projektaplikacija.SharedViewModel
 import com.example.projektaplikacija.utils.OsrmService
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -23,18 +24,17 @@ import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 @Composable
-fun MapScreen(onBack: () -> Unit) {
+fun MapScreen(
+    onBack: () -> Unit,
+    sharedVm: SharedViewModel
+) {
 
-    val stops = listOf(
-            LatLng(46.05108, 14.50513),
-            LatLng(46.23887, 14.35561),
-            LatLng(46.23102, 15.26044),
-            LatLng(46.55731, 15.64588),
-            LatLng(46.05108, 14.50513)
-    )
+    val stops = sharedVm.calculatedRoutePoints.value
 
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(stops.first(), 7.5f)
+        if (stops.isNotEmpty()) {
+            position = CameraPosition.fromLatLngZoom(stops.first(), 7.5f)
+        }
     }
 
     var roadPoints by remember { mutableStateOf<List<LatLng>>(emptyList()) }
@@ -42,15 +42,17 @@ fun MapScreen(onBack: () -> Unit) {
     var totalMin by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(stops) {
-        try {
-            val route = withContext(Dispatchers.IO) { OsrmService.routeGeoJson(stops) }
-            roadPoints = route.geometry
-            totalKm = route.distanceMeters / 1000.0
-            totalMin = (route.durationSeconds / 60.0).roundToInt()
-        } catch (e: Exception) {
-            roadPoints = emptyList()
-            totalKm = null
-            totalMin = null
+        if (stops.isNotEmpty()) {
+            try {
+                val route = withContext(Dispatchers.IO) { OsrmService.routeGeoJson(stops) }
+                roadPoints = route.geometry
+                totalKm = route.distanceMeters / 1000.0
+                totalMin = (route.durationSeconds / 60.0).roundToInt()
+            } catch (e: Exception) {
+                roadPoints = emptyList()
+                totalKm = null
+                totalMin = null
+            }
         }
     }
 

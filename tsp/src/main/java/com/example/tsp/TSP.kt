@@ -5,7 +5,7 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import kotlin.math.sqrt
 
-class TSP(path: String, _leaveOutArray: Array<Int>, private var maxEvaluations: Int = -1) {
+class TSP(private val inputStream: InputStream, _leaveOutArray: Array<Int>, private var maxEvaluations: Int = -1) {
 
     enum class DistanceType { EUCLIDEAN, WEIGHTED }
 
@@ -30,7 +30,7 @@ class TSP(path: String, _leaveOutArray: Array<Int>, private var maxEvaluations: 
     private var numberOfEvaluations: Int = 0
 
     init {
-        loadData(path)
+        loadData()
         numberOfEvaluations = 0
     }
 
@@ -81,10 +81,7 @@ class TSP(path: String, _leaveOutArray: Array<Int>, private var maxEvaluations: 
         return tour
     }
 
-    private fun loadData(path: String) {
-        val inputStream: InputStream = javaClass.classLoader?.getResourceAsStream(path)
-            ?: error("File $path not found in resources (put it in src/main/resources)")
-
+    private fun loadData() {
         val lines = mutableListOf<String>()
         BufferedReader(InputStreamReader(inputStream)).use { br ->
             var line = br.readLine()
@@ -98,11 +95,21 @@ class TSP(path: String, _leaveOutArray: Array<Int>, private var maxEvaluations: 
         var edgeWeightType = ""
         var edgeWeightFormat = ""
 
+        for (l in lines) {
+            if (l.startsWith("DIMENSION")) {
+                dimension = l.substringAfter(":").trim().toInt()
+                break
+            }
+        }
+
+        val xArr = DoubleArray(dimension)
+        val yArr = DoubleArray(dimension)
+        val addrArr = Array(dimension) { "" }
+        val matrixValues = mutableListOf<Double>()
+
         var readingCoords = false
         var readingMatrix = false
-
-        val allCities = mutableListOf<City>()
-        val matrixValues = mutableListOf<Double>()
+        var readingNames = false
 
         for (raw in lines) {
             val l = raw.trim()
@@ -113,12 +120,7 @@ class TSP(path: String, _leaveOutArray: Array<Int>, private var maxEvaluations: 
                     name = l.substringAfter(":").trim()
                     continue
                 }
-
-                l.startsWith("DIMENSION") -> {
-                    dimension = l.substringAfter(":").trim().toInt()
-                    continue
-                }
-
+                l.startsWith("DIMENSION") -> continue
                 l.startsWith("EDGE_WEIGHT_TYPE") -> {
                     edgeWeightType = l.substringAfter(":").trim()
                     continue
@@ -128,22 +130,28 @@ class TSP(path: String, _leaveOutArray: Array<Int>, private var maxEvaluations: 
                     edgeWeightFormat = l.substringAfter(":").trim()
                     continue
                 }
-
-                l.startsWith("NODE_COORD_SECTION") -> {
+                l.startsWith("DISPLAY_DATA_SECTION") || l.startsWith("NODE_COORD_SECTION") -> {
                     readingCoords = true
+                    readingMatrix = false
+                    readingNames = false
+                    continue
+                }
+                l.startsWith("CITY_NAME_SECTION") -> {
+                    readingNames = true
+                    readingCoords = false
                     readingMatrix = false
                     continue
                 }
-
                 l.startsWith("EDGE_WEIGHT_SECTION") -> {
                     readingMatrix = true
                     readingCoords = false
+                    readingNames = false
                     continue
                 }
-
-                l.endsWith("_SECTION") && !l.startsWith("NODE_COORD_SECTION") && !l.startsWith("EDGE_WEIGHT_SECTION") -> {
+                l.endsWith("_SECTION") -> {
                     readingCoords = false
                     readingMatrix = false
+                    readingNames = false
                     continue
                 }
 
@@ -152,14 +160,22 @@ class TSP(path: String, _leaveOutArray: Array<Int>, private var maxEvaluations: 
 
             if (readingCoords) {
                 val p = l.split("""\s+""".toRegex())
-                if (p.size >= 3 && (p[0].toInt() - 1) !in leaveOutArray) {
-                    allCities.add(
-                        City(
-                            index = p[0].toInt() - 1,
-                            x = p[1].toDouble(),
-                            y = p[2].toDouble()
-                        )
-                    )
+                if (p.size >= 3) {
+                    val idx = p[0].toInt() - 1
+                    if (idx in 0 until dimension) {
+                        xArr[idx] = p[1].toDouble()
+                        yArr[idx] = p[2].toDouble()
+                    }
+                }
+            }
+
+            if (readingNames) {
+                val p = l.split(" ", limit = 2)
+                if (p.size >= 2) {
+                    val idx = p[0].toIntOrNull()?.minus(1) ?: -1
+                    if (idx in 0 until dimension) {
+                        addrArr[idx] = p[1].trim()
+                    }
                 }
             }
 
@@ -172,18 +188,14 @@ class TSP(path: String, _leaveOutArray: Array<Int>, private var maxEvaluations: 
 
         distanceType = if (edgeWeightType == "EUC_2D") DistanceType.EUCLIDEAN else DistanceType.WEIGHTED
 
-        val builtCities: List<City> =
-            if (distanceType == DistanceType.WEIGHTED) {
-                require(dimension > 0) { "DIMENSION missing or invalid" }
-                List(dimension) { i -> City(index = i, x = 0.0, y = 0.0) }
-            } else {
-                require(allCities.size == (dimension - leaveOutArray.size) || dimension == 0) {
-                    "NODE_COORD_SECTION parsed ${allCities.size} cities, DIMENSION says $dimension"
-                }
-                allCities
+        val builtCities = mutableListOf<City>()
+        for (i in 0 until dimension) {
+            if (i !in leaveOutArray) {
+                builtCities.add(City(i, addrArr[i], xArr[i], yArr[i]))
             }
+        }
 
-        require(builtCities.isNotEmpty()) { "No cities loaded. Check TSPLIB file format." }
+        require(builtCities.isNotEmpty()) { "No cities loaded." }
 
         start = builtCities[0]
 
@@ -191,17 +203,12 @@ class TSP(path: String, _leaveOutArray: Array<Int>, private var maxEvaluations: 
         cities.addAll(builtCities.drop(1))
         numberOfCities = cities.size
 
-        if (maxEvaluations == -1)
-            maxEvaluations = 1000 * numberOfCities
+        if (maxEvaluations == -1) maxEvaluations = 1000 * numberOfCities
 
         if (distanceType == DistanceType.WEIGHTED) {
-            require(edgeWeightFormat == "" || edgeWeightFormat == "FULL_MATRIX") {
-                "Only FULL_MATRIX is supported for EXPLICIT. Found: $edgeWeightFormat"
-            }
+            require(edgeWeightFormat == "" || edgeWeightFormat == "FULL_MATRIX")
             val expected = dimension * dimension
-            require(matrixValues.size >= expected) {
-                "EDGE_WEIGHT_SECTION has ${matrixValues.size} values, expected $expected (FULL_MATRIX)"
-            }
+            require(matrixValues.size >= expected)
             weights = Array(dimension) { DoubleArray(dimension) }
             var idx = 0
             for (i in 0 until dimension) {

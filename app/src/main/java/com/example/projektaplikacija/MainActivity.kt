@@ -20,9 +20,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.projektaplikacija.ui.theme.AppNav
-import com.example.projektaplikacija.ui.theme.BottomNavigation
-import com.example.projektaplikacija.ui.theme.PotRoutes
 import com.example.projektaplikacija.ui.theme.ProjektAplikacijaTheme
 
 class MainActivity : ComponentActivity() {

@@ -1,4 +1,4 @@
-package com.example.projektaplikacija.ui.theme.screens
+package com.example.projektaplikacija.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

@@ -1,4 +1,4 @@
-package com.example.projektaplikacija.ui.theme.screens
+package com.example.projektaplikacija.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,12 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ProfileScreen() {
+fun HomeScreen() {
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Profile", style = MaterialTheme.typography.headlineMedium)
+        Text("Home", style = MaterialTheme.typography.headlineMedium)
     }
 }
