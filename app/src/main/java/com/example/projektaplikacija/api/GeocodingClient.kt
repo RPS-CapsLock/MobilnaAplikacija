@@ -10,7 +10,6 @@ class GeocodingClient(private val apiKey: String) {
     private val client = OkHttpClient()
 
     fun geocode(address: String): Pair<Double, Double>? {
-
         val encoded = URLEncoder.encode(address, "UTF-8")
         val url =
             "https://maps.googleapis.com/maps/api/geocode/json?address=$encoded&key=$apiKey"
@@ -18,24 +17,19 @@ class GeocodingClient(private val apiKey: String) {
         val request = Request.Builder().url(url).build()
 
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return null
-
             val body = response.body?.string() ?: return null
             val json = JSONObject(body)
 
-            if (json.getString("status") != "OK") {
-                return null
-            }
+            if (json.getString("status") != "OK") return null
 
             val results = json.getJSONArray("results")
             if (results.length() == 0) return null
 
-            val location = results
-                .getJSONObject(0)
+            val loc = results.getJSONObject(0)
                 .getJSONObject("geometry")
                 .getJSONObject("location")
 
-            return location.getDouble("lat") to location.getDouble("lng")
+            return loc.getDouble("lat") to loc.getDouble("lng")
         }
     }
 }

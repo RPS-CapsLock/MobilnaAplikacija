@@ -19,17 +19,17 @@ import com.example.projektaplikacija.pdf.readPdfFromAssets
 import com.example.projektaplikacija.ui.theme.ProjektAplikacijaTheme
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
-    private val apiKey = "YOUR_GOOGLE_API_KEY"
+    private val apiKey = "Key"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
         PDFBoxResourceLoader.init(applicationContext)
 
         setContent {
@@ -59,93 +59,66 @@ fun PipelineScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
 
-        Text(text = "Direct4.me ATSP Export")
+        Text("Direct4.me ATSP Export")
 
         Button(onClick = {
             status = "Running pipeline..."
 
             activity.lifecycleScope.launch {
-
                 try {
-                    val assetFiles = activity.assets.list("")
-                    if (assetFiles?.contains("Direct4me-seznam lokacij.pdf") != true) {
-                        status = "PDF file not found in assets!"
-                        return@launch
-                    }
-
                     val pdfText = withContext(Dispatchers.IO) {
                         readPdfFromAssets(activity, "Direct4me-seznam lokacij.pdf")
                     }
 
-                    val rawLocations = parseLocations(pdfText)
-                    if (rawLocations.isEmpty()) {
-                        status = "No valid locations found in PDF"
-                        return@launch
-                    }
-
+                    val raw = parseLocations(pdfText)
                     val geocoder = GeocodingClient(apiKey)
+
                     val locations = mutableListOf<Location>()
 
                     withContext(Dispatchers.IO) {
-                        rawLocations.forEach { raw ->
-
-                            val fullAddress =
-                                com.example.projektaplikacija.util.cleanAddress(raw.city, raw.address)
-
-                            val coords = geocoder.geocode(fullAddress)
-
-                            if (coords != null) {
-                                val (lat, lon) = coords
+                        raw.forEach {
+                            val full =
+                                "${it.address}, ${it.city}, Slovenia"
+                            geocoder.geocode(full)?.let { (lat, lon) ->
                                 locations.add(
-                                    Location(
-                                        id = raw.id,
-                                        city = raw.city,
-                                        address = fullAddress,
-                                        lat = lat,
-                                        lon = lon
-                                    )
+                                    Location(it.id, it.city, full, lat, lon)
                                 )
-                            } else {
-                                println("❌ Geocoding failed: $fullAddress")
                             }
-
-                            Thread.sleep(300)
+                            delay(300)
                         }
                     }
 
-                    val matrixClient = DistanceMatrixClient(apiKey)
-                    val (distanceMatrix, timeMatrix) = try {
-                        withContext(Dispatchers.IO) {
-                            matrixClient.fetchMatrices(locations)
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        status = "Failed to fetch distance/time matrices: ${e.message}"
+                    if (locations.size < 2) {
+                        status = "Not enough geocoded locations"
                         return@launch
                     }
 
-                    val distanceFile =
-                        activity.getExternalFilesDir(null)?.resolve("direct4me_distance.atsp")
-                    val timeFile =
-                        activity.getExternalFilesDir(null)?.resolve("direct4me_time.atsp")
+                    val limited = locations.take(15) // SAFE DEFAULT
 
-                    distanceFile?.let { TspExporter.exportAtsp(activity, it.name, distanceMatrix) }
-                    timeFile?.let { TspExporter.exportAtsp(activity, it.name, timeMatrix) }
+                    val matrixClient = DistanceMatrixClient(apiKey)
+                    val (dist, time) = withContext(Dispatchers.IO) {
+                        matrixClient.fetchMatrices(limited)
+                    }
 
-                    status =
-                        "ATSP files exported to:\n${distanceFile?.absolutePath}\n${timeFile?.absolutePath}"
+                    val dFile =
+                        activity.getExternalFilesDir(null)!!.resolve("distance.atsp")
+                    val tFile =
+                        activity.getExternalFilesDir(null)!!.resolve("time.atsp")
+
+                    TspExporter.exportAtsp(activity, dFile.name, dist)
+                    TspExporter.exportAtsp(activity, tFile.name, time)
+
+                    status = "Exported:\n${dFile.absolutePath}\n${tFile.absolutePath}"
 
                 } catch (e: Exception) {
-                    status = "Unexpected error: ${e.message}"
+                    status = "Error: ${e.message}"
                     e.printStackTrace()
                 }
             }
-
         }) {
             Text("Run full pipeline")
         }
 
-        Text(text = status)
+        Text(status)
     }
 }
-

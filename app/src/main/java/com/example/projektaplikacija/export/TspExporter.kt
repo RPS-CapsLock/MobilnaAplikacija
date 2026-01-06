@@ -11,7 +11,10 @@ object TspExporter {
         matrix: Array<IntArray>
     ): File {
 
-        val file = File(context.filesDir, fileName)
+        val dir = context.getExternalFilesDir(null)
+            ?: throw IllegalStateException("External storage not available")
+
+        val file = File(dir, fileName)
 
         file.printWriter().use { out ->
             out.println("NAME: $fileName")
